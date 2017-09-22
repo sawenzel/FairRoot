@@ -46,6 +46,7 @@
 #include "TRandom.h"                    // for TRandom, gRandom
 #include "TTree.h"                      // for TTree
 #include "TRefArray.h"                  // for TRefArray
+#include "TClass.h"
 
 #include <stdlib.h>                     // for exit
 #include <string.h>                     // for NULL, strcmp
@@ -320,6 +321,20 @@ void  FairRootManager::Register(const char* name,const char* Foldername ,TCollec
 	  FairLinkManager::Instance()->AddIgnoreType(GetBranchId(name));
   }
 }
+
+//_____________________________________________________________________________
+void FairRootManager::Register(const char* name, TClass const *cl, void* obj, Bool_t toFile)
+{
+  LOG(INFO) << " REGISTERING ANY " << cl << "\n";
+  if(toFile) {
+    /**Write the Object to the Tree*/
+    // AddPersistentBranch();
+  }
+  /**Keep the Object in Memory, and do not write it to the tree*/
+  AddMemoryBranch(name, cl, obj);
+  AddBranchToList(name);
+}
+
 //_____________________________________________________________________________
 
 //_____________________________________________________________________________
@@ -1081,6 +1096,32 @@ void  FairRootManager::AddMemoryBranch( const char* fName, TObject* pObj )
     fMap.insert(pair<TString, TObject*> (BrName, pObj));
   }
 }
+
+//_____________________________________________________________________________
+void  FairRootManager::AddMemoryBranch( const char* fName, TClass const * cl, void* pObj )
+{
+  /**branch will be available ionly in Memory, will not be written to disk */
+  map<TString, std::pair<TClass const *, void*>>::iterator p;
+  TString BrName=fName;
+  p=fAnyBranchMap.find(BrName);
+  if(p==fAnyBranchMap.end()) {
+    fAnyBranchMap.insert(pair<TString, pair<TClass const *, void*>> (BrName, pair<TClass const *, void*>(cl, pObj)));
+  }
+}
+
+void FairRootManager::CreateBranches() {
+  // this actually registers the branches with the output tree
+  if(fOutTree) {
+    for(auto& p : fAnyBranchMap) {
+      TClass const *cl = p.second.first;
+      void *obj = p.second.second;
+      LOG(INFO) << "Creating branch " << p.first << "\n";
+      fOutTree->Branch(p.first.Data(), cl->GetName(), obj);
+    }
+  }
+  LOG(DEBUG) << "Could not create branches in outtree\n";
+}
+
 //_____________________________________________________________________________
 
 //_____________________________________________________________________________

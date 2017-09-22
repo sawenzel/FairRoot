@@ -298,10 +298,13 @@ FairMCApplication::FairMCApplication()
 {
 // Default constructor
 }
+
+
 //_____________________________________________________________________________
 FairMCApplication::~FairMCApplication()
 {
-// Destructor
+
+  // Destructor
 //   LOG(DEBUG3) << "Enter Destructor of FairMCApplication"
 //               << FairLogger::endl;
   delete fStack;
@@ -944,6 +947,8 @@ void FairMCApplication::ConstructGeometry()
     for (Int_t n=NoOfVolumesBefore; n < NoOfVolumes; n++) {
       TGeoVolume* v = (TGeoVolume*) tgeovolumelist->At(n);
       fModVolMap.insert(pair<Int_t, Int_t >(v->GetNumber(),ModId));
+
+      std::cerr << "VMAP " << v->GetName() << " " << Mod->GetName() << "\n";
     }
   }
   fSenVolumes=FairModule::svList;
@@ -988,6 +993,32 @@ void FairMCApplication::ConstructGeometry()
   }
 
   gGeoManager->RefreshPhysicalNodes(kFALSE);
+
+
+    auto GetTGeoName = [](int id) {
+    auto l=gGeoManager->GetListOfVolumes();
+    // go through list and compare number
+    for (int i=0;i<l->GetEntries();++i) {
+      auto v=(TGeoVolume*)l->At(i);
+      if (v->GetNumber() == id) {
+        return v->GetName();
+      }
+    }
+    return "not found\n";
+  };
+    
+  auto GetModuleName = [&](int i) {
+    auto m=(FairModule*)fModules->At(i);
+    return m->GetName();
+  };
+  
+  // write infos about modules
+  //  for (auto p : fModVolMap) {
+  //    std::cerr << "VMAP " << GetTGeoName(p.first) << " " << GetModuleName(p.second) << "\n";
+  //  }
+
+
+
 }
 
 //_____________________________________________________________________________
@@ -1076,10 +1107,16 @@ void FairMCApplication::InitGeometry()
   FairRootManager* rootManager = fRootManager->GetFairRootManager();
   if (rootManager) {
     rootManager->WriteFolder();
+    // this line creates all the persistent branches which where registers
+    // under the main cmbroot folder
     TTree* outTree =new TTree(FairRootManager::GetTreeName(), "/cbmroot", 99);
     rootManager->TruncateBranchNames(outTree, "cbmroot");
     rootManager->SetOutTree(outTree);
 
+    // hook branches not managed by folders inside cbmroot
+    // (this applies in particular for branches holding non TObject types)
+    rootManager->CreateBranches();
+    
     // Explicit registration of stack in MT mode
     // (should be removed when problem with "Register" is resolved)
     // Create branch in outTree manually

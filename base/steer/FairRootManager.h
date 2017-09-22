@@ -41,6 +41,7 @@ class TNamed;
 class TTree;
 class TRefArray;
 class TIterator;
+class TClass;
 
 /**
  * I/O Manager class
@@ -146,8 +147,11 @@ class FairRootManager : public TObject
     *@param Foldername      Folder name containing this branch (e.g Detector name)
     *@param obj             Pointer of type TCollection (e.g. TClonesArray of hits, points)
     *@param toFile          if kTRUE, branch will be saved to the tree*/
-    void                Register(const char* name,const char* Foldername ,TCollection* obj, Bool_t toFile);
+    void                Register(const char* name, const char* Foldername, TCollection* obj, Bool_t toFile);
 
+    // same as before but we can create a branch of any class name having a dictionary
+    void                Register(const char *name, const TClass *cl, void *obj, Bool_t toFile);
+    
     void                RegisterInputObject(const char* name, TObject* obj);
 
     TClonesArray*       Register(TString branchName, TString className, TString folderName, Bool_t toFile);
@@ -241,6 +245,10 @@ class FairRootManager : public TObject
     void                AddFriends( );
     /**Add a branch to memory, it will not be written to the output files*/
     void                AddMemoryBranch(const char*, TObject* );
+    /**Add a branch to memory, it will not be written to the output files*/
+    void                AddMemoryBranch(const char*, TClass const *, void *);
+
+
     /** Internal Check if Branch persistence or not (Memory branch)
     return value:
     1 : Branch is Persistance
@@ -278,6 +286,14 @@ class FairRootManager : public TObject
      */
     std::map < TString , TObject* >     fMap;  //!
 
+    /// mapping from a branch name to class description and address for that branch
+    std::map<TString, std::pair<TClass const*, void*>> fAnyBranchMap;
+
+ public:
+    /// function that creates/registers all persistent branches in the output tree
+    void CreateBranches();
+
+ private:
     /**Singleton instance*/
     static TMCThreadLocal FairRootManager*  fgInstance;
 
